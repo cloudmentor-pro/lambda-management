@@ -1,0 +1,19 @@
+name: media-info
+on:
+  push:
+    branches:
+      - develop
+      # - staging
+      # - production
+    paths:
+      - 'media-info/**'
+
+permissions:
+  id-token: write
+  contents: write
+
+jobs:
+  call:
+    uses: ./.github/workflows/_go_lambda_deploy.yml
+    with:
+      app-id: media-info

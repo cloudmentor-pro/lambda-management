@@ -1,0 +1,63 @@
+# _go_lambda_deploy.yml (called workflow)
+name: Golang Lambda Build & Deploy
+on:
+  workflow_call:
+    inputs:
+      app-id:
+        description: App ID (= Directory Name)
+        type: string
+        required: true
+
+env:
+  AWS_REGION: us-east-1
+
+permissions:
+  id-token: write
+  contents: write
+
+jobs:
+    up:
+      name: Build & Deploy by AWS SAM
+      runs-on: ubuntu-latest
+      steps:
+        # https://github.com/actions/checkout
+        - name: Checkout
+          uses: actions/checkout@v4
+
+        # https://github.com/actions/setup-go
+        - name: Install Go
+          uses: actions/setup-go@v5
+          with:
+            go-version-file: ${{ inputs.app-id }}/app/go.mod
+
+        # https://github.com/aws-actions/setup-sam
+        - name: Install SAM
+          uses: aws-actions/setup-sam@v2
+
+        # set env config
+        - run: |
+            echo "AWS_ACCOUNT_ID=067057696393" >> $GITHUB_ENV
+            echo "ENV_PREFIX=dev" >> $GITHUB_ENV
+          if: github.ref == 'refs/heads/develop'
+        - run: |
+            echo "AWS_ACCOUNT_ID=12345678" >> $GITHUB_ENV
+            echo "ENV_PREFIX=stg" >> $GITHUB_ENV
+          if: github.ref == 'refs/heads/staging'
+        - run: |
+            echo "AWS_ACCOUNT_ID=123456789" >> $GITHUB_ENV
+            echo "ENV_PREFIX=prod" >> $GITHUB_ENV
+          if: github.ref == 'refs/heads/production'
+          
+        # Ref. https://github.com/aws-actions/configure-aws-credentials
+        - name: Configure AWS Credentials
+          uses: aws-actions/configure-aws-credentials@v4
+          with:
+            aws-region: ${{ env.AWS_REGION }}
+            role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/CMPGitHubActionsRole
+            role-session-name: CMPGithubActionsSession
+
+        # build & deploy
+        - name: Build & Deploy by SAM
+          run: |
+            cd ${{ inputs.app-id }}
+            make all LAMBDA_ENV=${{ env.ENV_PREFIX }}
