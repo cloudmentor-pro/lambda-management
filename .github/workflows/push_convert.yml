@@ -1,0 +1,19 @@
+name: convert
+on:
+  push:
+    branches:
+      - develop
+      # - staging
+      # - production
+    paths:
+      - 'convert/**'
+
+permissions:
+  id-token: write
+  contents: write
+
+jobs:
+  call:
+    uses: ./.github/workflows/_go_lambda_deploy.yml
+    with:
+      app-id: convert
